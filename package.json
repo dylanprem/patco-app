@@ -1,0 +1,29 @@
+{
+  "name": "patco-app",
+  "version": "1.0.0",
+  "description": "Patco Schedule Stream",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dylanprem/patco-app.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dylanprem/patco-app/issues"
+  },
+  "homepage": "https://github.com/dylanprem/patco-app#readme",
+  "dependencies": {
+    "axios": "^0.24.0",
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
+    "gtfs-realtime-bindings": "0.0.6"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.15"
+  }
+}
