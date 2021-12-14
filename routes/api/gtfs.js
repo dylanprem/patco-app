@@ -1,10 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const GtfsRealtimeBindings = require('gtfs-realtime-bindings');
-const axios = require('axios');
 const cors = require('cors');
 const fs = require('fs');
-const { type } = require('os');
+const Twitter = require('twitter');
 
 // use
 router.options('/*', cors());
@@ -14,49 +12,117 @@ router.get('/test', (req, res) => {
 	res.send('gtfs test route');
 });
 
-// Get Agencies
-router.get('/agencies', cors(), (req, res) => {
+function csvToJSON(data) {
+	let strings = [];
+	let objs = [];
+
+	for (let i = 0; i <= data.length; i++) {
+		if (data[i] !== undefined) {
+			strings.push(data[i].trim());
+		}
+	}
+
+	const keys = strings[0].toString().split(',');
+	const values = strings.filter((array, index) => index !== 0);
+
+	for (let i = 0; i <= values.length; i++) {
+		let obj = {};
+
+		if (values[i] !== undefined) {
+			values[i].trim().split(',').forEach((item, index) => {
+				obj[keys[index]] = item.trim();
+			});
+
+			objs.push(obj);
+		}
+	}
+
+	objs.pop();
+
+	return objs;
+}
+
+// Get Stop Times
+router.get('/stop-times', cors(), (req, res) => {
 	var data = fs
 		.readFileSync('PortAuthorityTransitCorporation/stop_times.txt')
 		.toString() // convert Buffer to string
 		.split('\n'); // split string to lines
 
-	let stopTimesArray = [];
-	let objs = [];
+	res.json(csvToJSON(data));
+});
 
-	for (let i = 0; i <= data.length; i++) {
-		if (data[i] !== undefined) {
-			stopTimesArray.push(data[i].split());
-		}
-	}
+// Get Routes
+router.get('/routes', cors(), (req, res) => {
+	var data = fs
+		.readFileSync('PortAuthorityTransitCorporation/routes.txt')
+		.toString() // convert Buffer to string
+		.split('\n'); // split string to lines
 
-	const keys = stopTimesArray[0].toString().split(',');
-	const values = stopTimesArray.filter((array, index) => index !== 0);
-	values.forEach((item) => {
-		const arrayValues = item.toString().split(',');
-		console.log(arrayValues);
-		// let temp = {};
+	res.json(csvToJSON(data));
+});
 
-		// keys.forEach((key, index) => {
-		// 	arrayValues.forEach((x) => {
-		// 		Object.assign(temp, { [key]: x[index] });
-		// 		objs.push(temp);
-		// 	});
-		// });
+// Get Stops
+router.get('/stops', cors(), (req, res) => {
+	var data = fs
+		.readFileSync('PortAuthorityTransitCorporation/stops.txt')
+		.toString() // convert Buffer to string
+		.split('\n'); // split string to lines
+
+	res.json(csvToJSON(data));
+});
+
+// Get fare attributes
+router.get('/fare-attributes', cors(), (req, res) => {
+	var data = fs
+		.readFileSync('PortAuthorityTransitCorporation/fare_attributes.txt')
+		.toString() // convert Buffer to string
+		.split('\n'); // split string to lines
+
+	res.json(csvToJSON(data));
+});
+
+// Get fare rules
+router.get('/fare-rules', cors(), (req, res) => {
+	var data = fs
+		.readFileSync('PortAuthorityTransitCorporation/fare_rules.txt')
+		.toString() // convert Buffer to string
+		.split('\n'); // split string to lines
+
+	res.json(csvToJSON(data));
+});
+
+// Get Trips
+router.get('/trips', cors(), (req, res) => {
+	var data = fs
+		.readFileSync('PortAuthorityTransitCorporation/trips.txt')
+		.toString() // convert Buffer to string
+		.split('\n'); // split string to lines
+
+	res.json(csvToJSON(data));
+});
+
+// get twitter feed
+router.get('/tweets', cors(), (req, res) => {
+	const client = new Twitter({
+		consumer_key: process.env.TWITTER_API_KEY,
+		consumer_secret: process.env.TWITTER_API_SECRET,
+		access_token_key: process.env.TWITTER_ACCESS_TOKEN,
+		access_token_secret: process.env.TWITTER_ACCESS_TOKEN_SECRET
 	});
-	// values.forEach((arr) => {
-	// 	arr.toString().split(',').forEach((set) => {
-	// 		let obj = {};
 
-	// 		keys.forEach((item, index) => {
-	// 			Object.assign(obj, { [item]: set[index] });
-	// 		});
+	const params = {
+		screen_name: 'ridepatco',
+		count: 20
+	};
 
-	// 		objs.push(obj);
-	// 	});
-	// });
-
-	//console.log(objs);
+	client.get('statuses/user_timeline', params, function(error, tweets, response) {
+		if (!error) {
+			res.json(tweets);
+		} else {
+			res.json(error);
+		}
+	});
 });
 
 module.exports = router;

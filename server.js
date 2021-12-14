@@ -1,6 +1,7 @@
 const express = require('express');
 const app = express();
 const port = process.env.PORT || 5000;
+require('dotenv').config();
 
 // routes
 const GTFS_ROUTES = require('./routes/api/gtfs');
