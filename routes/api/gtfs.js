@@ -3,6 +3,8 @@ const router = express.Router();
 const cors = require('cors');
 const fs = require('fs');
 const Twitter = require('twitter');
+const moment = require('moment');
+const { json } = require('express');
 
 // use
 router.options('/*', cors());
@@ -41,16 +43,6 @@ function csvToJSON(data) {
 
 	return objs;
 }
-
-// Get Stop Times
-router.get('/stop-times', cors(), (req, res) => {
-	var data = fs
-		.readFileSync('PortAuthorityTransitCorporation/stop_times.txt')
-		.toString() // convert Buffer to string
-		.split('\n'); // split string to lines
-
-	res.json(csvToJSON(data));
-});
 
 // Get Routes
 router.get('/routes', cors(), (req, res) => {
@@ -93,13 +85,82 @@ router.get('/fare-rules', cors(), (req, res) => {
 });
 
 // Get Trips
-router.get('/trips', cors(), (req, res) => {
+router.get('/trips/:routeId', cors(), (req, res) => {
 	var data = fs
 		.readFileSync('PortAuthorityTransitCorporation/trips.txt')
 		.toString() // convert Buffer to string
 		.split('\n'); // split string to lines
+	const jsonFormat = csvToJSON(data);
+	const filtered = [ ...jsonFormat ].filter((x) => x.route_id === req.params.routeId);
 
-	res.json(csvToJSON(data));
+	res.json(filtered);
+});
+
+// Get next 5 arrival times based on stop
+router.get('/stop-times/:routeId/:stopId', cors(), (req, res) => {
+	const stopData = fs
+		.readFileSync('PortAuthorityTransitCorporation/stop_times.txt')
+		.toString() // convert Buffer to string
+		.split('\n'); // split string to lines
+
+	const tripData = fs
+		.readFileSync('PortAuthorityTransitCorporation/trips.txt')
+		.toString() // convert Buffer to string
+		.split('\n'); // split string to lines
+
+	// Stop times by station
+	let stopDataJSON;
+	let tripDataJSON;
+
+	if (req.params.routeId === '2') {
+		stopDataJSON = [ ...csvToJSON(stopData) ]
+			.filter((x) => x.stop_id === req.params.stopId)
+			.filter((y) => y.trip_id.length > 2)
+			.sort((a, b) => parseFloat(a.trip_id) - parseFloat(b.trip_id));
+		// All trips by route direction
+		tripDataJSON = [ ...csvToJSON(tripData) ]
+			.filter((x) => x.route_id === req.params.routeId)
+			.filter((y) => y.trip_id.length > 2)
+			.sort((a, b) => parseFloat(a.trip_id) - parseFloat(b.trip_id));
+	} else {
+		stopDataJSON = [ ...csvToJSON(stopData) ]
+			.filter((x) => x.stop_id === req.params.stopId)
+			.filter((y) => y.trip_id.length > 3)
+			.sort((a, b) => parseFloat(a.trip_id) - parseFloat(b.trip_id));
+		// All trips by route direction
+		tripDataJSON = [ ...csvToJSON(tripData) ]
+			.filter((x) => x.route_id === req.params.routeId)
+			.filter((y) => y.trip_id.length > 3)
+			.sort((a, b) => parseFloat(a.trip_id) - parseFloat(b.trip_id));
+	}
+
+	let objs = [];
+
+	stopDataJSON.forEach((stop, stopIndex) => {
+		tripDataJSON.forEach((trip, tripIndex) => {
+			if (stop.trip_id.toString() === trip.trip_id.toString()) {
+				const newObj = {
+					route_id: trip.route_id,
+					trip_id: stop.trip_id,
+					stop_id: stop.stop_id,
+					arrival_time: stop.arrival_time,
+					wheelchair_accessible: trip.wheelchair_accessible,
+					bikes_allowed: trip.bikes_allowed
+				};
+
+				objs.push(newObj);
+			}
+		});
+	});
+
+	const nextFiveTrains = objs
+		.filter((x) => {
+			const currentTime = moment();
+			return moment(x.arrival_time, 'HH:mm:ss').isAfter(currentTime);
+		})
+		.filter((y, index) => index < 5);
+
+	res.json(nextFiveTrains);
 });
 
 // get twitter feed
