@@ -15,8 +15,6 @@ router.get('/test', (req, res) => {
 	res.send('gtfs test route');
 });
 
-function getYelpInfo(obj, id) {}
-
 function csvToJSON(data) {
 	let strings = [];
 	let objs = [];
@@ -158,7 +156,8 @@ router.get('/stop-times/:routeId/:stopId', cors(), (req, res) => {
 
 	const nextFiveTrains = objs
 		.filter((x) => {
-			const currentTime = moment();
+			// Server time is UTC
+			let currentTime = moment().subtract(5, 'hours');
 			return moment(x.arrival_time, 'HH:mm:ss').isAfter(currentTime);
 		})
 		.filter((y, index) => index < 5);
