@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import axios from 'axios';
 import { Form, Row, Col, Container, Alert, Button, ButtonGroup, Spinner } from 'react-bootstrap';
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvent } from 'react-leaflet';
+import { Link } from 'react-router-dom';
 
 function Trip() {
 	const [ stops, setStops ] = useState([]);
@@ -21,36 +22,51 @@ function Trip() {
 	const [ panels, setShowPanels ] = useState(false);
 	const [ showSubmit, setShowSubmit ] = useState(false);
 	const [ showReset, setShowReset ] = useState(false);
+	const [ loading, setLoading ] = useState(false);
+	const [ fare, setFare ] = useState('');
 
 	useEffect(() => {
 		let done = false;
-		let stopsResponse;
-		let fareAttributesResponse;
-		let fareRulesResponse;
-		let routesResponse;
-
-		async function fetchData() {
-			stopsResponse = await axios.get('http://localhost:5000/api/gtfs/stops');
-			fareAttributesResponse = await axios.get('http://localhost:5000/api/gtfs/fare-attributes');
-			fareRulesResponse = await axios.get('http://localhost:5000/api/gtfs/fare-rules');
-			routesResponse = await axios.get('http://localhost:5000/api/gtfs/routes');
-
-			// Update State
-			if (stopsResponse) {
-				setStops([ ...stopsResponse.data ].sort((a, b) => b.stop_id - a.stop_id));
-				setFilteredStops([ ...stopsResponse.data ].sort((a, b) => b.stop_id - a.stop_id));
-			}
-			if (fareAttributesResponse) setFareAttributes(fareAttributesResponse.data);
-			if (fareRulesResponse) setFareRules(fareRulesResponse.data);
-			if (routesResponse) setRoutes(routesResponse.data);
-		}
-
-		fetchData();
-
+		setLoading(true);
 		return () => {
 			done = true;
 		};
 	}, []);
+
+	useEffect(
+		() => {
+			let done = false;
+			let stopsResponse;
+			let fareAttributesResponse;
+			let fareRulesResponse;
+			let routesResponse;
+
+			async function fetchData() {
+				stopsResponse = await axios.get('/api/gtfs/stops');
+				fareAttributesResponse = await axios.get('/api/gtfs/fare-attributes');
+				fareRulesResponse = await axios.get('/api/gtfs/fare-rules');
+				routesResponse = await axios.get('/api/gtfs/routes');
+
+				// Update State
+				if (stopsResponse) {
+					setStops([ ...stopsResponse.data ].sort((a, b) => b.stop_id - a.stop_id));
+					setFilteredStops([ ...stopsResponse.data ].sort((a, b) => b.stop_id - a.stop_id));
+				}
+				if (fareAttributesResponse) setFareAttributes(fareAttributesResponse.data);
+				if (fareRulesResponse) setFareRules(fareRulesResponse.data);
+				if (routesResponse) setRoutes(routesResponse.data);
+
+				setLoading(false);
+			}
+
+			fetchData();
+
+			return () => {
+				done = true;
+			};
+		},
+		[ loading ]
+	);
 
 	useEffect(
 		() => {
@@ -72,10 +88,11 @@ function Trip() {
 				}
 
 				const response = await axios.get(
-					`http://localhost:5000/api/gtfs/stop-times/${direction.route_id}/${fromDestination.stop_id}`
+					`/api/gtfs/stop-times/${direction.route_id}/${fromDestination.stop_id}`
 				);
 
 				setNextTrains(response.data);
+				getFare();
 			};
 
 			resolveDirection();
@@ -148,34 +165,67 @@ function Trip() {
 	const onSubmit = (e) => {
 		setShowPanels(true);
 		setShowReset(true);
+		//getFare();
 	};
 
 	const updateTimes = async () => {
-		const response = await axios.get(
-			`http://localhost:5000/api/gtfs/stop-times/${direction.route_id}/${fromDestination.stop_id}`
-		);
+		const response = await axios.get(`/api/gtfs/stop-times/${direction.route_id}/${fromDestination.stop_id}`);
 
 		setNextTrains(response.data);
 	};
 
+	const resetPage = () => {
+		setLoading(true);
+		setStops([]);
+		setFilteredStops([]);
+		setRoutes([]);
+		setFromDestination({});
+		setToDestination({});
+		setDirection({});
+		setFromCoords([ 39.833809, -75.000325 ]);
+		setToCoords([ 39.948635, -75.167792 ]);
+		setNextTrains([]);
+		setEnableTo(false);
+		setShowPanels(false);
+		setShowSubmit(false);
+		setShowReset(false);
+	};
+
+	const getFare = () => {
+		const clone = [ ...fareRules ];
+		const fareAttributesClone = [ ...fareAttributes ];
+		const id = [ ...clone ].filter(
+			(x) => x.origin_id === fromDestination.zone_id && x.destination_id === toDestination.zone_id
+		)[0].fare_id;
+		const fare = fareAttributesClone.filter((x) => x.fare_id === id)[0].price;
+		setFare(fare);
+	};
+
 	return (
-		<Container className="mt-2">
+		<Container className="mt-2 text-light">
+			<Row className="m-2 p-2">
+				<Link to="/">
+					<i className="fa fa-home text-light" aria-hidden="true" />
+				</Link>
+			</Row>
 			{showReset ? (
 				<div>
-					<Button>Reset</Button>
+					<Button variant="warning" onClick={(e) => resetPage()}>
+						Reset
+					</Button>
 				</div>
 			) : (
 				<div>
 					{' '}
 					<Row>
-						<Col md="4">
+						<Col md="4" className="offset-md-4">
 							{' '}
 							<ButtonGroup aria-label="Basic example">
 								{routes.map((item, index) => {
 									return (
 										<Button
 											key={index}
-											variant={item.route_id === direction.route_id ? 'success' : 'secondary'}
+											variant={item.route_id === direction.route_id ? 'warning' : 'secondary'}
 											onClick={(e) => setDirectionAndStops(item)}
 										>
 											{item.route_long_name}
@@ -186,7 +236,7 @@ function Trip() {
 						</Col>
 					</Row>
 					<Row className="mt-2">
-						<Col md="4">
+						<Col md="4" className="offset-md-4">
 							{' '}
 							<Form.Select
 								onChange={(e) => onFromSelect(e)}
@@ -208,7 +258,7 @@ function Trip() {
 						</Col>
 					</Row>
 					<Row className="mt-2">
-						<Col md="4">
+						<Col md="4" className="offset-md-4">
 							{' '}
 							<Form.Select
 								onChange={(e) => onToSelect(e)}
@@ -233,8 +283,10 @@ function Trip() {
 						<div>
 							{' '}
 							<Row className="mt-2">
-								<Col md="4">
-									<Button onClick={(e) => onSubmit(e)}>Submit</Button>
+								<Col md="4" className="offset-md-4">
+									<Button variant="warning" onClick={(e) => onSubmit(e)}>
+										Submit
+									</Button>
 								</Col>
 							</Row>
 						</div>
@@ -287,23 +339,23 @@ function Trip() {
 						<Col>
 							<h3>
 								Next 5 Stop Times at {fromDestination.stop_name} Station{' '}
-								<Button onClick={(e) => updateTimes()}>Refresh</Button>
+								<Button variant="warning" onClick={(e) => updateTimes()}>
+									<i className="fa fa-refresh" aria-hidden="true" />
+								</Button>
 							</h3>{' '}
 							{nextTrains.map((item, index) => {
 								return (
 									<Alert variant={index === 0 ? 'success' : 'dark'} className="mt-1" key={index}>
-										<Alert.Heading>
-											{index === 0 ? (
-												<div>
-													<p>
-														<Spinner animation="grow" variant="success" /> Next Train
-														arrives at {item.arrival_time}
-													</p>
-												</div>
-											) : (
-												<p>Arrives at {item.arrival_time}</p>
-											)}
-										</Alert.Heading>
+										{index === 0 ? (
+											<p>
+												<span>
+													<Spinner animation="grow" variant="success" size="sm" /> Next train
+													arrives at {item.arrival_time}
+												</span>
+											</p>
+										) : (
+											<p>Arrives at {item.arrival_time}</p>
+										)}
 									</Alert>
 								);
 							})}
@@ -311,8 +363,7 @@ function Trip() {
 						<Col>
 							<h3>Trip Details:</h3>
 							<p>You are travelling {direction.route_long_name}</p>
-							<p>One way fare: </p>
-							<p>Round trip fare: </p>
+							<p>One way fare: ${fare}</p>
 						</Col>
 					</Row>
 				</div>

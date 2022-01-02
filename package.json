@@ -32,7 +32,9 @@
     "needle": "^3.0.0",
     "oauth": "^0.9.15",
     "twitter": "^1.7.1",
-    "util": "^0.12.4"
+    "util": "^0.12.4",
+    "yelp-api": "^1.0.3",
+    "yelp-fusion": "^3.0.0"
   },
   "devDependencies": {
     "nodemon": "^2.0.15"

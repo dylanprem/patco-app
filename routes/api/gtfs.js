@@ -4,7 +4,8 @@ const cors = require('cors');
 const fs = require('fs');
 const Twitter = require('twitter');
 const moment = require('moment');
-const { json } = require('express');
+const axios = require('axios');
+const yelp = require('yelp-fusion');
 
 // use
 router.options('/*', cors());
@@ -13,6 +14,8 @@ router.options('/*', cors());
 router.get('/test', (req, res) => {
 	res.send('gtfs test route');
 });
+
+function getYelpInfo(obj, id) {}
 
 function csvToJSON(data) {
 	let strings = [];
@@ -174,7 +177,8 @@ router.get('/tweets', cors(), (req, res) => {
 
 	const params = {
 		screen_name: 'ridepatco',
-		count: 20
+		count: 20,
+		tweet_mode: 'extended'
 	};
 
 	client.get('statuses/user_timeline', params, function(error, tweets, response) {
@@ -184,6 +188,60 @@ router.get('/tweets', cors(), (req, res) => {
 			res.json(error);
 		}
 	});
+});
+
+router.get('/local/:userLocation/:type', cors(), async (req, res) => {
+	const key = process.env.BING_MAPS_KEY;
+	const type = req.params.type;
+	const userLocation = req.params.userLocation;
+	const url = `https://dev.virtualearth.net/REST/v1/LocalSearch/?type=${type}&userLocation=${userLocation}&maxResults=25&key=${key}`;
+
+	try {
+		let response = await axios.get(url);
+		res.json(response.data);
+	} catch (error) {
+		res.json(error);
+	}
+});
+
+router.get('/yelp/business-match/:name/:address/:city/:state/:country', cors(), async (req, res) => {
+	const client = yelp.client(process.env.YELP_API_KEY);
+	const { name, address, city, state, country } = req.params;
+	try {
+		const response = await client.businessMatch({
+			name: name,
+			address1: address,
+			city: city,
+			state: state,
+			country: country
+		});
+
+		return res.json(response.jsonBody.businesses[0].id);
+	} catch (e) {
+		console.log(e);
+	}
+});
+
+router.get('/yelp/search/:id', cors(), async (req, res) => {
+	const client = yelp.client(process.env.YELP_API_KEY);
+
+	try {
+		const response = await client.business(req.params.id);
+		res.json(response.jsonBody);
+	} catch (e) {
+		console.log(e);
+	}
+});
+
+router.get('/yelp/reviews/:id', cors(), async (req, res) => {
+	const client = yelp.client(process.env.YELP_API_KEY);
+
+	try {
+		const response = await client.reviews(req.params.id);
+		res.json(response.jsonBody);
+	} catch (e) {
+		console.log(e);
+	}
 });
 
 module.exports = router;
