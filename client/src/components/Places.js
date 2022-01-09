@@ -35,9 +35,12 @@ function Places() {
 	const [ yelpInfo, setYelpInfo ] = useState({});
 	const [ yelpReviews, setYelpReviews ] = useState([]);
 	const [ loading, setLoading ] = useState('');
+	const [ day, setDay ] = useState({});
+	const [ hours, setHours ] = useState({});
 
 	const handleClose = () => setShow(false);
-	const handleShow = async (item) => {
+	const handleShow = async (e, item) => {
+		e.preventDefault();
 		const name = item.name;
 		const address = item.Address.addressLine;
 		const city = item.Address.locality;
@@ -49,33 +52,39 @@ function Places() {
 				`/api/gtfs/yelp/business-match/${name}/${address}/${city}/${state}/${country}`
 			);
 
+			let businessResponse;
+			let reviews;
 			if (!businessMatchId.length) {
 				const businessSearchId = await axios.get(`/api/gtfs/yelp/businessSearch/${name}`);
-				const businessResponse = await axios.get(`/api/gtfs/yelp/search/${businessSearchId.data}`);
-				const reviews = await axios.get(`/api/gtfs/yelp/reviews/${businessSearchId.data}`);
-				if (businessResponse) {
-					setYelpInfo(businessResponse.data);
-				}
-				if (reviews) {
-					setYelpReviews(reviews.data);
-				}
+				businessResponse = await axios.get(`/api/gtfs/yelp/search/${businessSearchId.data}`);
+				reviews = await axios.get(`/api/gtfs/yelp/reviews/${businessSearchId.data}`);
 			} else {
-				const businessResponse = await axios.get(`/api/gtfs/yelp/search/${businessMatchId.data[0].id}`);
-				const reviews = await axios.get(`/api/gtfs/yelp/reviews/${businessMatchId.data[0].id}`);
-				if (businessResponse) {
-					setYelpInfo(businessResponse.data);
-				}
-				if (reviews) {
-					setYelpReviews(reviews.data);
-				}
+				businessResponse = await axios.get(`/api/gtfs/yelp/search/${businessMatchId.data[0].id}`);
+				reviews = await axios.get(`/api/gtfs/yelp/reviews/${businessMatchId.data[0].id}`);
 			}
 
+			setYelpInfo(businessResponse.data);
+			setYelpReviews(reviews.data);
+			const today = businessResponse.data.hours[0].open.filter((x) => x.day === moment().day());
+			if (today.length) {
+				setDay(today[0]);
+				const start = formatTime(today[0].start);
+				const end = formatTime(today[0].end);
+				setHours({
+					start: formatTime(today[0].start),
+					end: formatTime(today[0].end),
+					openNow: moment(moment().format('h:mm a'), 'h:mm a').isBetween(
+						moment(start, 'h:mm a'),
+						moment(end, 'h:mm a')
+					)
+				});
+			}
+			console.log(today);
 			setLoading(false);
+			setShow(true);
 		} catch (error) {
 			console.log(error);
 		}
-
-		setShow(true);
 	};
 	useEffect(() => {
 		let done = false;
@@ -119,13 +128,6 @@ function Places() {
 
 	const formatTime = (time) => {
 		return moment(time.toString().slice(0, 2) + ':' + time.toString().slice(2, 4), 'HH:mm').format('h:mm a');
-	};
-
-	const isBusinessOpen = (start, end) => {
-		start = moment(start.toString().slice(0, 2) + ':' + start.toString().slice(2, 4), 'HH:mm').format('h:mm a');
-		end = moment(end.toString().slice(0, 2) + ':' + end.toString().slice(2, 4), 'HH:mm').format('h:mm a');
-		const now = moment().format('h:mm a');
-		return moment(now).isAfter(start) && moment(now).isBefore(end);
 	};
 
 	return (
@@ -229,7 +231,7 @@ function Places() {
 											<Button
 												variant="danger"
 												className="text-light ml-1"
-												onClick={(e) => handleShow(item)}
+												onClick={(e) => handleShow(e, item)}
 											>
 												{loading ? (
 													<span>
@@ -260,36 +262,20 @@ function Places() {
 							{yelpInfo.is_closed ? (
 								<h1 className="text-danger">Closed down</h1>
 							) : (
-								<span className="text-secondary">
-									<p>
-										{yelpInfo.hours && !yelpInfo.is_closed ? (
-											<small>
-												{isBusinessOpen(
-													yelpInfo.hours[0].open[moment().day()].start,
-													yelpInfo.hours[0].open[moment().day()].end
-												) ? (
-													<div>
-														<h5 className="text-dark">
-															Open now{' '}
-															<i
-																className="fa fa-check text-success"
-																aria-hidden="true"
-															/>
-														</h5>
-														Todays hours:{' '}
-														{formatTime(yelpInfo.hours[0].open[moment().day()].start)} -{' '}
-														{formatTime(yelpInfo.hours[0].open[moment().day()].end)}{' '}
-													</div>
-												) : (
-													<h5 className="text-danger">
-														Currently closed until{' '}
-														{formatTime(yelpInfo.hours[0].open[moment().day()].start)}
-													</h5>
-												)}
-											</small>
-										) : null}
-									</p>
-								</span>
+								<div>
+									{!Object.keys(day).length ? (
+										<h4 className="text-danger">Closed today</h4>
+									) : Object.keys(hours).length && hours.openNow ? (
+										<div>
+											<h4 className="text-success">Open now!</h4>
+											<p>
+												Todays hours: {hours.start} - {hours.end}
+											</p>
+										</div>
+									) : (
+										<h4 className="text-danger">Closed</h4>
+									)}
+								</div>
 							)}
 						</ListGroupItem>
 						<ListGroup.Item>
