@@ -129,13 +129,13 @@ router.get('/stop-times/:routeId/:stopId', cors(), (req, res) => {
 		// Eastbound
 		stopDataJSON = [ ...csvToJSON(stopData) ]
 			.filter((x) => x.stop_id === req.params.stopId)
-			.filter((y) => parseFloat(y.trip_id) >= 8396 && parseFloat(y.trip_id) <= 8494)
+			.filter((y) => parseFloat(y.trip_id) >= 9440 && parseFloat(y.trip_id) <= 9534)
 			.sort((a, b) => parseFloat(a.trip_id) - parseFloat(b.trip_id));
 
 		// All trips by route direction
 		tripDataJSON = [ ...csvToJSON(tripData) ]
 			.filter((x) => x.route_id === req.params.routeId)
-			.filter((y) => parseFloat(y.trip_id) >= 8396 && parseFloat(y.trip_id) <= 8494)
+			.filter((y) => parseFloat(y.trip_id) >= 9440 && parseFloat(y.trip_id) <= 9534)
 			.sort((a, b) => parseFloat(a.trip_id) - parseFloat(b.trip_id));
 	}
 
