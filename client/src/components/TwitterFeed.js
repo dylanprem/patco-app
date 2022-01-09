@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Card, Row, Badge, Col, Container, Alert, ListGroup } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
+import moment from 'moment';
 
 function TwitterFeed() {
 	const [ tweets, setTweets ] = useState([]);
@@ -59,7 +60,8 @@ function TwitterFeed() {
 						return (
 							<Card key={index} className="mt-2">
 								<Card.Header>
-									<i className="fab fa-twitter text-info" /> {item.created_at}
+									<i className="fab fa-twitter text-info" />{' '}
+									{moment(item.created_at).format('MM/DD/YYYY hh:mm a')}
 								</Card.Header>
 								<Card.Body>
 									<Card.Title>
@@ -69,7 +71,7 @@ function TwitterFeed() {
 										{item.user.name} <small className="text-muted">@{item.user.screen_name}</small>
 									</Card.Title>
 									<Card.Text>
-										<p>{item.full_text} </p>
+										<p>{decodeURIComponent(item.full_text)} </p>
 										{item.entities.media && item.entities.media.length > 0 ? (
 											item.entities.media.map((m, urlIndex) => {
 												return <img key={urlIndex} src={m.media_url} className="img-fluid" />;

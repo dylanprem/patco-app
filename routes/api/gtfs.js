@@ -129,13 +129,13 @@ router.get('/stop-times/:routeId/:stopId', cors(), (req, res) => {
 		// Eastbound
 		stopDataJSON = [ ...csvToJSON(stopData) ]
 			.filter((x) => x.stop_id === req.params.stopId)
-			.filter((y) => parseFloat(y.trip_id) >= 9440 && parseFloat(y.trip_id) <= 9534)
+			.filter((y) => parseFloat(y.trip_id) >= 8396 && parseFloat(y.trip_id) <= 8494)
 			.sort((a, b) => parseFloat(a.trip_id) - parseFloat(b.trip_id));
 
 		// All trips by route direction
 		tripDataJSON = [ ...csvToJSON(tripData) ]
 			.filter((x) => x.route_id === req.params.routeId)
-			.filter((y) => parseFloat(y.trip_id) >= 9440 && parseFloat(y.trip_id) <= 9534)
+			.filter((y) => parseFloat(y.trip_id) >= 8396 && parseFloat(y.trip_id) <= 8494)
 			.sort((a, b) => parseFloat(a.trip_id) - parseFloat(b.trip_id));
 	}
 
@@ -159,12 +159,23 @@ router.get('/stop-times/:routeId/:stopId', cors(), (req, res) => {
 	});
 
 	let currentTime = moment();
+	let midNight = moment('00:00:00', 'HH:mm:ss');
+
 	const nextFiveTrains = objs
 		.filter((x) => moment(x.arrival_time, 'HH:mm:ss').isAfter(currentTime))
 		.sort((a, b) => parseFloat(a.trip_id) - parseFloat(b.trip_id))
 		.filter((y, i) => i <= 5);
 
-	res.json(nextFiveTrains);
+	const trainsAfterMidnight = objs
+		.filter((x) => moment(x.arrival_time, 'HH:mm:ss').isAfter(midNight))
+		.sort((a, b) => parseFloat(a.trip_id) - parseFloat(b.trip_id))
+		.filter((y, i) => i <= 5);
+
+	if (nextFiveTrains.length) {
+		res.json(nextFiveTrains);
+	} else {
+		res.json(trainsAfterMidnight);
+	}
 });
 
 // get twitter feed
