@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import axios from 'axios';
-import { Form, Row, Col, Container, Alert, Button, ButtonGroup, Spinner } from 'react-bootstrap';
+import { Form, Row, Col, Container, Alert, Button, ButtonGroup, Spinner, ToggleButton } from 'react-bootstrap';
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvent } from 'react-leaflet';
 import { Link } from 'react-router-dom';
+import moment from 'moment';
 
 function Trip() {
 	const [ stops, setStops ] = useState([]);
@@ -24,6 +25,9 @@ function Trip() {
 	const [ showReset, setShowReset ] = useState(false);
 	const [ loading, setLoading ] = useState(false);
 	const [ fare, setFare ] = useState('');
+	const [ leaveAtOptions, setLeaveAtOptions ] = useState([]);
+	const [ leaveAt, setLeaveAt ] = useState('00:00:00');
+	const [ leaveNow, setLeaveNow ] = useState(true);
 
 	useEffect(() => {
 		let done = false;
@@ -68,41 +72,36 @@ function Trip() {
 		[ loading ]
 	);
 
-	useEffect(
-		() => {
-			let done = false;
+	useEffect(() => {
+		let done = false;
 
-			const resolveDirection = async () => {
-				if (JSON.stringify(fromDestination) === '{}' || JSON.stringify(toDestination) === '{}') {
-					return false;
-				}
+		const setDropdown = async () => {
+			let formatted = [];
 
-				if (parseFloat(fromDestination.stop_id) < parseFloat(toDestination.stop_id)) {
-					setDirection(routes.filter((x) => x.route_id === '2')[0]);
-					setStops([ ...stops ].sort((a, b) => a.stop_id - b.stop_id));
-					setFilteredStops([ ...filteredStops ].sort((a, b) => a.stop_id - b.stop_id));
-				} else {
-					setDirection(routes.filter((x) => x.route_id === '1')[0]);
-					setStops([ ...stops ].sort((a, b) => b.stop_id - a.stop_id));
-					setFilteredStops([ ...filteredStops ].sort((a, b) => b.stop_id - a.stop_id));
-				}
+			[ ...Array(24) ].forEach((item, index) => {
+				formatted.push({
+					text:
+						index <= 9
+							? moment(`0${index}:00`, 'HH:mm').format('hh:mm a')
+							: moment(`${index}:00`, 'HH:mm').format('hh:mm a'),
+					value: index <= 9 ? `0${index}:00:00` : `${index}:00:00`
+				});
+				formatted.push({
+					text:
+						index <= 9
+							? moment(`0${index}:30`, 'HH:mm').format('hh:mm a')
+							: moment(`${index}:30`, 'HH:mm').format('hh:mm a'),
+					value: index <= 9 ? `0${index}:30:00` : `${index}:30:00`
+				});
+			});
 
-				const response = await axios.get(
-					`/api/gtfs/stop-times/${direction.route_id}/${fromDestination.stop_id}`
-				);
+			setLeaveAtOptions([ ...formatted ]);
+		};
 
-				setNextTrains(response.data);
-				getFare();
-			};
+		setDropdown();
 
-			resolveDirection();
-
-			return () => {
-				done = true;
-			};
-		},
-		[ fromDestination, toDestination ]
-	);
+		return () => (done = true);
+	}, []);
 
 	const setDirectionAndStops = (item) => {
 		setDirection(item);
@@ -162,15 +161,37 @@ function Trip() {
 		}
 	};
 
-	const onSubmit = (e) => {
-		setShowPanels(true);
-		setShowReset(true);
-		//getFare();
+	const onSubmit = async (e) => {
+		if (JSON.stringify(fromDestination) === '{}' || JSON.stringify(toDestination) === '{}') {
+			return false;
+		}
+
+		if (parseFloat(fromDestination.stop_id) < parseFloat(toDestination.stop_id)) {
+			setDirection(routes.filter((x) => x.route_id === '2')[0]);
+			setStops([ ...stops ].sort((a, b) => a.stop_id - b.stop_id));
+			setFilteredStops([ ...filteredStops ].sort((a, b) => a.stop_id - b.stop_id));
+		} else {
+			setDirection(routes.filter((x) => x.route_id === '1')[0]);
+			setStops([ ...stops ].sort((a, b) => b.stop_id - a.stop_id));
+			setFilteredStops([ ...filteredStops ].sort((a, b) => b.stop_id - a.stop_id));
+		}
+
+		const response = await axios.get(
+			`/api/gtfs/stop-times/${direction.route_id}/${fromDestination.stop_id}/${leaveNow}/${leaveAt}`
+		);
+
+		if (response) {
+			setNextTrains(response.data);
+			getFare();
+			setShowPanels(true);
+			setShowReset(true);
+		}
 	};
 
 	const updateTimes = async () => {
-		const response = await axios.get(`/api/gtfs/stop-times/${direction.route_id}/${fromDestination.stop_id}`);
-
+		const response = await axios.get(
+			`/api/gtfs/stop-times/${direction.route_id}/${fromDestination.stop_id}/${leaveNow}/${leaveAt}`
+		);
 		setNextTrains(response.data);
 	};
 
@@ -189,6 +210,8 @@ function Trip() {
 		setShowPanels(false);
 		setShowSubmit(false);
 		setShowReset(false);
+		setLeaveAt('00:00:00');
+		setLeaveNow(true);
 	};
 
 	const getFare = () => {
@@ -280,6 +303,38 @@ function Trip() {
 							</Form.Select>
 						</Col>
 					</Row>
+					<Row className="mt-2">
+						<Col md="4" className="offset-md-4">
+							<h5 className="text-light mt-2">Leaving now?</h5>
+							<ButtonGroup className="mb-2">
+								<Button variant={leaveNow ? 'success' : 'secondary'} onClick={(e) => setLeaveNow(true)}>
+									Yes
+								</Button>
+								<Button
+									variant={!leaveNow ? 'danger' : 'secondary'}
+									onClick={(e) => setLeaveNow(false)}
+								>
+									No
+								</Button>
+							</ButtonGroup>
+						</Col>
+					</Row>
+					{!leaveNow ? (
+						<Row className="mt-2">
+							<Col md="4" className="offset-md-4">
+								<h5 className="text-light mt-2">What time are you leaving?</h5>{' '}
+								<Form.Select onChange={(e) => setLeaveAt(e.target.value)}>
+									{leaveAtOptions.map((item, index) => {
+										return (
+											<option key={index} value={item.value}>
+												{item.text}
+											</option>
+										);
+									})}
+								</Form.Select>
+							</Col>
+						</Row>
+					) : null}
 					{showSubmit ? (
 						<div>
 							{' '}

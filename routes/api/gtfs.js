@@ -98,7 +98,7 @@ router.get('/trips/:routeId', cors(), (req, res) => {
 });
 
 // Get next 5 arrival times based on stop
-router.get('/stop-times/:routeId/:stopId', cors(), (req, res) => {
+router.get('/stop-times/:routeId/:stopId/:leaveNow/:leaveAt', cors(), (req, res) => {
 	const stopData = fs
 		.readFileSync('PortAuthorityTransitCorporation/stop_times.txt')
 		.toString() // convert Buffer to string
@@ -159,10 +159,13 @@ router.get('/stop-times/:routeId/:stopId', cors(), (req, res) => {
 	});
 
 	let currentTime = moment();
+	let requestedTime = moment(req.params.leaveAt, 'HH:mm:ss');
 	let midNight = moment('00:00:00', 'HH:mm:ss');
 
 	const nextFiveTrains = objs
-		.filter((x) => moment(x.arrival_time, 'HH:mm:ss').isAfter(currentTime))
+		.filter((x) =>
+			moment(x.arrival_time, 'HH:mm:ss').isAfter(req.params.leaveNow === 'true' ? currentTime : requestedTime)
+		)
 		.sort((a, b) => parseFloat(a.trip_id) - parseFloat(b.trip_id))
 		.filter((y, i) => i <= 5);
 
