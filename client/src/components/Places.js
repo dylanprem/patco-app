@@ -39,7 +39,7 @@ function Places() {
 	const [ hours, setHours ] = useState({});
 
 	const handleClose = () => setShow(false);
-	const handleShow = async (e, item) => {
+	const handleShow = async (e, item, index) => {
 		e.preventDefault();
 		const name = item.name;
 		const address = item.Address.addressLine;
@@ -48,6 +48,7 @@ function Places() {
 		const country = item.Address.countryRegion;
 		try {
 			setLoading(true);
+			setShow(true);
 			const businessMatchId = await axios.get(
 				`/api/gtfs/yelp/business-match/${name}/${address}/${city}/${state}/${country}`
 			);
@@ -79,9 +80,8 @@ function Places() {
 					)
 				});
 			}
-			console.log(today);
+
 			setLoading(false);
-			setShow(true);
 		} catch (error) {
 			console.log(error);
 		}
@@ -231,18 +231,12 @@ function Places() {
 											<Button
 												variant="danger"
 												className="text-light ml-1"
-												onClick={(e) => handleShow(e, item)}
+												onClick={(e) => handleShow(e, item, index)}
+												id={'yelpButton-' + index}
 											>
-												{loading ? (
-													<span>
-														<i className="fab fa-yelp" /> Yelp info{' '}
-														<Spinner animation="border" variant="light" size="sm" />
-													</span>
-												) : (
-													<span>
-														<i className="fab fa-yelp" /> Yelp info
-													</span>
-												)}
+												<span>
+													<i className="fab fa-yelp" /> Yelp info
+												</span>
 											</Button>
 										</ListGroup.Item>
 									</ListGroup>
@@ -253,112 +247,120 @@ function Places() {
 				</Col>
 			</Row>
 			<Modal show={show} onHide={handleClose} size="lg" centered>
-				<Modal.Header closeButton>
-					<Modal.Title>{yelpInfo.name} </Modal.Title>
-				</Modal.Header>
-				<Modal.Body>
-					<ListGroup variant="flush">
-						<ListGroupItem>
-							{yelpInfo.is_closed ? (
-								<h1 className="text-danger">Closed down</h1>
-							) : (
-								<div>
-									{!Object.keys(day).length ? (
-										<h4 className="text-danger">Closed today</h4>
-									) : Object.keys(hours).length && hours.openNow ? (
-										<div>
-											<h4 className="text-success">Open now!</h4>
-											<p>
-												Todays hours: {hours.start} - {hours.end}
-											</p>
-										</div>
+				{loading ? (
+					<h1 className="text-center p-5 m-5">
+						Loading <Spinner animation="border" variant="danger" />
+					</h1>
+				) : (
+					<div>
+						<Modal.Header closeButton>
+							<Modal.Title>{yelpInfo.name} </Modal.Title>
+						</Modal.Header>
+						<Modal.Body>
+							<ListGroup variant="flush">
+								<ListGroupItem>
+									{yelpInfo.is_closed ? (
+										<h1 className="text-danger">Closed down</h1>
 									) : (
-										<h4 className="text-danger">Closed</h4>
+										<div>
+											{!Object.keys(day).length ? (
+												<h4 className="text-danger">Closed today</h4>
+											) : Object.keys(hours).length && hours.openNow ? (
+												<div>
+													<h4 className="text-success">Open now!</h4>
+													<p>
+														Todays hours: {hours.start} - {hours.end}
+													</p>
+												</div>
+											) : (
+												<h4 className="text-danger">Closed</h4>
+											)}
+										</div>
 									)}
-								</div>
-							)}
-						</ListGroupItem>
-						<ListGroup.Item>
-							<h3>
-								Rating:{' '}
-								<span
-									className={
-										parseFloat(yelpInfo.rating) <= 2 ? (
-											'text-danger'
-										) : parseFloat(yelpInfo.rating) >= 4 ? (
-											'text-success'
-										) : (
-											'text-warning'
-										)
-									}
-								>
-									{yelpInfo.rating}/5
-								</span>
-							</h3>{' '}
-							<Badge bg="dark">{yelpInfo.review_count} reviews</Badge>
-						</ListGroup.Item>
-						<ListGroup.Item>
-							<h3>
-								Price: <span className="text-success">{yelpInfo.price}</span>
-							</h3>{' '}
-						</ListGroup.Item>
-						<ListGroup.Item>
-							{yelpInfo.photos &&
-								yelpInfo.photos.map((p, i) => {
-									return (
-										<img
-											src={p}
-											key={i}
-											className="img-fluid rounded img-thumbnail"
-											style={{ height: '33%', width: '33%' }}
-										/>
-									);
-								})}
-						</ListGroup.Item>
-						<ListGroup.Item>
-							<h3>Some Reviews:</h3>
-							{yelpReviews.reviews &&
-								yelpReviews.reviews.map((r, rIndex) => {
-									return (
-										<Card key={rIndex} className="mt-3 mb-3" bg="dark">
-											<Card.Header>
-												{[ ...Array(r.rating) ].map((num, numIndex) => {
-													return (
-														<i
-															key={numIndex}
-															className="fa fa-star text-warning"
-															aria-hidden="true"
-														/>
-													);
-												})}
-											</Card.Header>
-											<Card.Body>
-												<blockquote className="blockquote mb-0">
-													<p className="text-light">
-														{r.text}{' '}
-														<a href={r.url} target="new">
-															read more
-														</a>
-													</p>
+								</ListGroupItem>
+								<ListGroup.Item>
+									<h3>
+										Rating:{' '}
+										<span
+											className={
+												parseFloat(yelpInfo.rating) <= 2 ? (
+													'text-danger'
+												) : parseFloat(yelpInfo.rating) >= 4 ? (
+													'text-success'
+												) : (
+													'text-warning'
+												)
+											}
+										>
+											{yelpInfo.rating}/5
+										</span>
+									</h3>{' '}
+									<Badge bg="dark">{yelpInfo.review_count} reviews</Badge>
+								</ListGroup.Item>
+								<ListGroup.Item>
+									<h3>
+										Price: <span className="text-success">{yelpInfo.price}</span>
+									</h3>{' '}
+								</ListGroup.Item>
+								<ListGroup.Item>
+									{yelpInfo.photos &&
+										yelpInfo.photos.map((p, i) => {
+											return (
+												<img
+													src={p}
+													key={i}
+													className="img-fluid rounded img-thumbnail"
+													style={{ height: '33%', width: '33%' }}
+												/>
+											);
+										})}
+								</ListGroup.Item>
+								<ListGroup.Item>
+									<h3>Some Reviews:</h3>
+									{yelpReviews.reviews &&
+										yelpReviews.reviews.map((r, rIndex) => {
+											return (
+												<Card key={rIndex} className="mt-3 mb-3" bg="dark">
+													<Card.Header>
+														{[ ...Array(r.rating) ].map((num, numIndex) => {
+															return (
+																<i
+																	key={numIndex}
+																	className="fa fa-star text-warning"
+																	aria-hidden="true"
+																/>
+															);
+														})}
+													</Card.Header>
+													<Card.Body>
+														<blockquote className="blockquote mb-0">
+															<p className="text-light">
+																{r.text}{' '}
+																<a href={r.url} target="new">
+																	read more
+																</a>
+															</p>
 
-													<footer className="blockquote-footer">{r.user.name}</footer>
-													<p className="text-light">
-														Created at:{' '}
-														<span className="text-secondary">{r.time_created}</span>
-													</p>
-												</blockquote>
-											</Card.Body>
-										</Card>
-									);
-								})}
-						</ListGroup.Item>
-					</ListGroup>
-				</Modal.Body>
-				<Modal.Footer>
-					<Button variant="secondary" onClick={handleClose}>
-						Close
-					</Button>
-				</Modal.Footer>
+															<footer className="blockquote-footer">{r.user.name}</footer>
+															<p className="text-light">
+																Created at:{' '}
+																<span className="text-secondary">{r.time_created}</span>
+															</p>
+														</blockquote>
+													</Card.Body>
+												</Card>
+											);
+										})}
+								</ListGroup.Item>
+							</ListGroup>
+						</Modal.Body>
+						<Modal.Footer>
+							<Button variant="secondary" onClick={handleClose}>
+								Close
+							</Button>
+						</Modal.Footer>
+					</div>
+				)}
 			</Modal>
 		</Container>
 	);
