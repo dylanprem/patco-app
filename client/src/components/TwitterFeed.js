@@ -22,6 +22,7 @@ function TwitterFeed() {
 			done = true;
 		};
 	}, []);
+
 	return (
 		<Container className="h-100 bg-warning">
 			<Row className="h-100 justify-content-center align-items-center">
@@ -71,7 +72,21 @@ function TwitterFeed() {
 										{item.user.name} <small className="text-muted">@{item.user.screen_name}</small>
 									</Card.Title>
 									<Card.Text>
-										<p>{JSON.parse(JSON.stringify(item.full_text))} </p>
+										<p>
+											{item.full_text
+												.split(' ')
+												.filter((x) => !x.startsWith('http'))
+												.join(' ')}{' '}
+											{item.entities.urls && item.entities.urls.length > 0 ? (
+												item.entities.urls.map((url, urlIndex) => {
+													return (
+														<a key={urlIndex} href={`${url.url}`} target="_blank">
+															{url.url}
+														</a>
+													);
+												})
+											) : null}
+										</p>
 										{item.entities.media && item.entities.media.length > 0 ? (
 											item.entities.media.map((m, urlIndex) => {
 												return <img key={urlIndex} src={m.media_url} className="img-fluid" />;
