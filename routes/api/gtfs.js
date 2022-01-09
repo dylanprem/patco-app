@@ -114,24 +114,28 @@ router.get('/stop-times/:routeId/:stopId', cors(), (req, res) => {
 	let tripDataJSON;
 
 	if (req.params.routeId === '2') {
+		// Westbound
 		stopDataJSON = [ ...csvToJSON(stopData) ]
 			.filter((x) => x.stop_id === req.params.stopId)
-			.filter((y) => y.trip_id.length > 2)
+			.filter((y) => parseFloat(y.trip_id) >= 7698 && parseFloat(y.trip_id) <= 7807)
 			.sort((a, b) => parseFloat(a.trip_id) - parseFloat(b.trip_id));
+
 		// All trips by route direction
 		tripDataJSON = [ ...csvToJSON(tripData) ]
 			.filter((x) => x.route_id === req.params.routeId)
-			.filter((y) => y.trip_id.length > 2)
+			.filter((y) => parseFloat(y.trip_id) >= 7698 && parseFloat(y.trip_id) <= 7807)
 			.sort((a, b) => parseFloat(a.trip_id) - parseFloat(b.trip_id));
 	} else {
+		// Eastbound
 		stopDataJSON = [ ...csvToJSON(stopData) ]
 			.filter((x) => x.stop_id === req.params.stopId)
-			.filter((y) => y.trip_id.length > 3)
+			.filter((y) => parseFloat(y.trip_id) >= 8396 && parseFloat(y.trip_id) <= 8494)
 			.sort((a, b) => parseFloat(a.trip_id) - parseFloat(b.trip_id));
+
 		// All trips by route direction
 		tripDataJSON = [ ...csvToJSON(tripData) ]
 			.filter((x) => x.route_id === req.params.routeId)
-			.filter((y) => y.trip_id.length > 3)
+			.filter((y) => parseFloat(y.trip_id) >= 8396 && parseFloat(y.trip_id) <= 8494)
 			.sort((a, b) => parseFloat(a.trip_id) - parseFloat(b.trip_id));
 	}
 
@@ -154,13 +158,12 @@ router.get('/stop-times/:routeId/:stopId', cors(), (req, res) => {
 		});
 	});
 
+	const utcTime = moment.utc();
+	let currentTime = process.env.NODE_ENV === 'production' ? moment(utcTime).subtract(5, 'hours') : moment();
 	const nextFiveTrains = objs
-		.filter((x) => {
-			// Server time is UTC
-			let currentTime = moment().subtract(5, 'hours');
-			return moment(x.arrival_time, 'HH:mm:ss').isAfter(currentTime);
-		})
-		.filter((y, index) => index < 5);
+		.filter((x) => moment(x.arrival_time, 'HH:mm:ss').isAfter(currentTime))
+		.sort((a, b) => parseFloat(a.trip_id) - parseFloat(b.trip_id))
+		.filter((y, i) => i <= 5);
 
 	res.json(nextFiveTrains);
 });
