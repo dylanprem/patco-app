@@ -55,7 +55,7 @@ function Places() {
 
 			let businessResponse;
 			let reviews;
-			if (!businessMatchId.length) {
+			if (!businessMatchId.data.length) {
 				const businessSearchId = await axios.get(`/api/gtfs/yelp/businessSearch/${name}`);
 				businessResponse = await axios.get(`/api/gtfs/yelp/search/${businessSearchId.data}`);
 				reviews = await axios.get(`/api/gtfs/yelp/reviews/${businessSearchId.data}`);
@@ -265,16 +265,18 @@ function Places() {
 										<div>
 											{!Object.keys(day).length ? (
 												<h4 className="text-danger">Closed today</h4>
-											) : Object.keys(hours).length && hours.openNow ? (
+											) : Object.keys(hours).length ? (
 												<div>
-													<h4 className="text-success">Open now!</h4>
+													{hours.openNow ? (
+														<h4 className="text-success">Open now!</h4>
+													) : (
+														<h4 className="text-danger">Closed</h4>
+													)}
 													<p>
 														Todays hours: {hours.start} - {hours.end}
 													</p>
 												</div>
-											) : (
-												<h4 className="text-danger">Closed</h4>
-											)}
+											) : null}
 										</div>
 									)}
 								</ListGroupItem>
