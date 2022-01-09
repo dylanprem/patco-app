@@ -210,6 +210,7 @@ function Trip() {
 			</Row>
 			{showReset ? (
 				<div>
+					<h1>Monday - Friday Schedule</h1>
 					<Button variant="warning" onClick={(e) => resetPage()}>
 						Reset
 					</Button>
