@@ -1,8 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Container, Form, Button, Card, ListGroup, Modal, Badge } from 'react-bootstrap';
+import {
+	Row,
+	Col,
+	Container,
+	Form,
+	Button,
+	Card,
+	ListGroup,
+	Modal,
+	Badge,
+	Spinner,
+	ListGroupItem
+} from 'react-bootstrap';
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvent } from 'react-leaflet';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
+import moment from 'moment';
 
 function Places() {
 	const [ stops, setStops ] = useState([]);
@@ -21,6 +34,7 @@ function Places() {
 	const [ show, setShow ] = useState(false);
 	const [ yelpInfo, setYelpInfo ] = useState({});
 	const [ yelpReviews, setYelpReviews ] = useState([]);
+	const [ loading, setLoading ] = useState('');
 
 	const handleClose = () => setShow(false);
 	const handleShow = async (item) => {
@@ -30,17 +44,33 @@ function Places() {
 		const state = item.Address.adminDistrict;
 		const country = item.Address.countryRegion;
 		try {
-			const yelpId = await axios.get(
+			setLoading(true);
+			const businessMatchId = await axios.get(
 				`/api/gtfs/yelp/business-match/${name}/${address}/${city}/${state}/${country}`
 			);
 
-			if (yelpId) {
-				const businessResponse = await axios.get(`/api/gtfs/yelp/search/${yelpId.data}`);
-				const reviews = await axios.get(`/api/gtfs/yelp/reviews/${yelpId.data}`);
-
-				if (businessResponse) setYelpInfo(businessResponse.data);
-				if (reviews) setYelpReviews(reviews.data);
+			if (!businessMatchId.length) {
+				const businessSearchId = await axios.get(`/api/gtfs/yelp/businessSearch/${name}`);
+				const businessResponse = await axios.get(`/api/gtfs/yelp/search/${businessSearchId.data}`);
+				const reviews = await axios.get(`/api/gtfs/yelp/reviews/${businessSearchId.data}`);
+				if (businessResponse) {
+					setYelpInfo(businessResponse.data);
+				}
+				if (reviews) {
+					setYelpReviews(reviews.data);
+				}
+			} else {
+				const businessResponse = await axios.get(`/api/gtfs/yelp/search/${businessMatchId.data[0].id}`);
+				const reviews = await axios.get(`/api/gtfs/yelp/reviews/${businessMatchId.data[0].id}`);
+				if (businessResponse) {
+					setYelpInfo(businessResponse.data);
+				}
+				if (reviews) {
+					setYelpReviews(reviews.data);
+				}
 			}
+
+			setLoading(false);
 		} catch (error) {
 			console.log(error);
 		}
@@ -87,13 +117,15 @@ function Places() {
 		setUserLocation(obj);
 	};
 
-	const renderStars = (int) => {
-		let arr = [];
-		arr.length = int;
+	const formatTime = (time) => {
+		return moment(time.toString().slice(0, 2) + ':' + time.toString().slice(2, 4), 'HH:mm').format('h:mm a');
+	};
 
-		arr.map((item) => {
-			return <i className="fa fa-star" aria-hidden="true" />;
-		});
+	const isBusinessOpen = (start, end) => {
+		start = moment(start.toString().slice(0, 2) + ':' + start.toString().slice(2, 4), 'HH:mm').format('h:mm a');
+		end = moment(end.toString().slice(0, 2) + ':' + end.toString().slice(2, 4), 'HH:mm').format('h:mm a');
+		const now = moment().format('h:mm a');
+		return moment(now).isAfter(start) && moment(now).isBefore(end);
 	};
 
 	return (
@@ -180,7 +212,7 @@ function Places() {
 									</Card.Text>
 
 									<ListGroup horizontal>
-										<ListGroup.Item className="border-0">
+										<ListGroup.Item className="">
 											{' '}
 											{item.Website != '' ? (
 												<a
@@ -192,14 +224,23 @@ function Places() {
 												</a>
 											) : null}
 										</ListGroup.Item>
-										<ListGroup.Item className="border-0">
+										<ListGroup.Item className="">
 											{' '}
 											<Button
 												variant="danger"
 												className="text-light ml-1"
 												onClick={(e) => handleShow(item)}
 											>
-												<i className="fab fa-yelp" /> Yelp info
+												{loading ? (
+													<span>
+														<i className="fab fa-yelp" /> Yelp info{' '}
+														<Spinner animation="border" variant="light" size="sm" />
+													</span>
+												) : (
+													<span>
+														<i className="fab fa-yelp" /> Yelp info
+													</span>
+												)}
 											</Button>
 										</ListGroup.Item>
 									</ListGroup>
@@ -211,19 +252,46 @@ function Places() {
 			</Row>
 			<Modal show={show} onHide={handleClose} size="lg" centered>
 				<Modal.Header closeButton>
-					<Modal.Title>
-						{yelpInfo.name} -{' '}
-						{yelpInfo.is_closed ? (
-							<span className="text-danger">Closed now</span>
-						) : (
-							<span className="text-secondary">
-								Open now <i className="fa fa-check text-success" aria-hidden="true" />
-							</span>
-						)}
-					</Modal.Title>
+					<Modal.Title>{yelpInfo.name} </Modal.Title>
 				</Modal.Header>
 				<Modal.Body>
 					<ListGroup variant="flush">
+						<ListGroupItem>
+							{yelpInfo.is_closed ? (
+								<h1 className="text-danger">Closed down</h1>
+							) : (
+								<span className="text-secondary">
+									<p>
+										{yelpInfo.hours && !yelpInfo.is_closed ? (
+											<small>
+												{isBusinessOpen(
+													yelpInfo.hours[0].open[moment().day()].start,
+													yelpInfo.hours[0].open[moment().day()].end
+												) ? (
+													<div>
+														<h5 className="text-dark">
+															Open now{' '}
+															<i
+																className="fa fa-check text-success"
+																aria-hidden="true"
+															/>
+														</h5>
+														Todays hours:{' '}
+														{formatTime(yelpInfo.hours[0].open[moment().day()].start)} -{' '}
+														{formatTime(yelpInfo.hours[0].open[moment().day()].end)}{' '}
+													</div>
+												) : (
+													<h5 className="text-danger">
+														Currently closed until{' '}
+														{formatTime(yelpInfo.hours[0].open[moment().day()].start)}
+													</h5>
+												)}
+											</small>
+										) : null}
+									</p>
+								</span>
+							)}
+						</ListGroupItem>
 						<ListGroup.Item>
 							<h3>
 								Rating:{' '}

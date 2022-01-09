@@ -71,7 +71,7 @@ function TwitterFeed() {
 										{item.user.name} <small className="text-muted">@{item.user.screen_name}</small>
 									</Card.Title>
 									<Card.Text>
-										<p>{decodeURIComponent(item.full_text)} </p>
+										<p>{JSON.parse(JSON.stringify(item.full_text))} </p>
 										{item.entities.media && item.entities.media.length > 0 ? (
 											item.entities.media.map((m, urlIndex) => {
 												return <img key={urlIndex} src={m.media_url} className="img-fluid" />;

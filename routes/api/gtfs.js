@@ -227,8 +227,32 @@ router.get('/yelp/business-match/:name/:address/:city/:state/:country', cors(), 
 			state: state,
 			country: country
 		});
+		if (response) return res.json(response.jsonBody.businesses);
+	} catch (e) {
+		res.json(e);
+	}
+});
 
-		return res.json(response.jsonBody.businesses[0].id);
+router.get('/yelp/phone/:phoneNumber', cors(), async (req, res) => {
+	const client = yelp.client(process.env.YELP_API_KEY);
+
+	try {
+		const response = await client.phoneSearch({ phone: '+' + req.params.phoneNumber });
+		res.json(response.jsonBody);
+	} catch (e) {
+		console.log(e);
+	}
+});
+
+router.get('/yelp/businessSearch/:name', cors(), async (req, res) => {
+	const client = yelp.client(process.env.YELP_API_KEY);
+
+	try {
+		const response = await client.search({
+			term: '+' + req.params.name,
+			location: 'Philadelphia, PA'
+		});
+		res.json(response.jsonBody.businesses[0].id);
 	} catch (e) {
 		console.log(e);
 	}
