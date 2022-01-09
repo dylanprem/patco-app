@@ -158,8 +158,7 @@ router.get('/stop-times/:routeId/:stopId', cors(), (req, res) => {
 		});
 	});
 
-	const utcTime = moment.utc();
-	let currentTime = process.env.NODE_ENV === 'production' ? moment(utcTime).subtract(5, 'hours') : moment();
+	let currentTime = moment();
 	const nextFiveTrains = objs
 		.filter((x) => moment(x.arrival_time, 'HH:mm:ss').isAfter(currentTime))
 		.sort((a, b) => parseFloat(a.trip_id) - parseFloat(b.trip_id))
