@@ -267,7 +267,7 @@ function Places() {
 												<h4 className="text-danger">Closed today</h4>
 											) : Object.keys(hours).length ? (
 												<div>
-													{hours.openNow ? (
+													{hours.openNow || day.is_overnight ? (
 														<h4 className="text-success">Open now!</h4>
 													) : (
 														<h4 className="text-danger">Closed</h4>
